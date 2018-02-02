@@ -1,4 +1,4 @@
-# require 'byebug'
+require 'byebug'
 require_relative 'db_connection'
 require 'active_support/inflector'
 # NB: the attr_accessor we wrote in phase 0 is NOT used in the rest
@@ -56,17 +56,18 @@ class SQLObject
 
   def self.find(id)
 
-    obj = DBConnection.execute(<<-SQL)
+    obj = DBConnection.execute(<<-SQL, id)
     SELECT
       *
     FROM
       #{self.table_name}
     WHERE
-      #{self.table_name}.id = id
+      #{self.table_name}.id = ?
     LIMIT
      1
       SQL
-    obj
+    return self.new(obj.first) unless obj.empty?
+    nil
   end
 
   def initialize(params = {})
@@ -82,11 +83,26 @@ class SQLObject
   end
 
   def attribute_values
-    # ...
+    arr = []
+    self.attributes.each {|k,v| arr << v }
+      arr
   end
 
   def insert
-    # ...
+    arr_of_commas = []
+    col_names = self.class.columns.join(",") #takes the first row with id names and else
+    col_names.length.times do
+    arr_of_qm << ['?']
+    arr_of_commas.join(",")
+    end
+    DBConnection.execute(<<-SQL)
+      INSERT INTO
+        #{self.table_name}(col_names)
+      VALUES
+        arr_of_qm
+
+
+    SQL
   end
 
   def update
