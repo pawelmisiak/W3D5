@@ -1,3 +1,4 @@
+# require 'byebug'
 require_relative 'db_connection'
 require 'active_support/inflector'
 # NB: the attr_accessor we wrote in phase 0 is NOT used in the rest
@@ -6,7 +7,7 @@ require 'active_support/inflector'
 class SQLObject
   def self.columns
 
-  return @column_name unless @column_name.nil?
+  return @column_name[0].map{|el| el = el.to_sym} unless @column_name.nil?
   @column_name =  DBConnection.execute2(<<-SQL)
   SELECT
     *
@@ -36,20 +37,43 @@ class SQLObject
   end
 
   def self.all
-    # ...
+    obj = DBConnection.execute(<<-SQL)
+    SELECT
+      *
+    FROM
+      #{self.table_name}
+      SQL
+      self.parse_all(obj)
   end
 
   def self.parse_all(results)
-    # ...
+      arr = []
+      results.each do
+        |obj| arr << self.new(obj)
+      end
+      arr
   end
 
   def self.find(id)
-    # ...
+
+    obj = DBConnection.execute(<<-SQL)
+    SELECT
+      *
+    FROM
+      #{self.table_name}
+    WHERE
+      #{self.table_name}.id = id
+    LIMIT
+     1
+      SQL
+    obj
   end
 
   def initialize(params = {})
     params.each do |key, value|
-      raise "Error" if !self.columns.include?(key.to_sym)
+      symbolized = key.to_sym
+      raise "unknown attribute '#{key}'" unless self.class.columns.include?(symbolized)
+      self.send("#{symbolized}=", value)
     end
   end
 
